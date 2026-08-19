@@ -1,53 +1,10 @@
 import { useState, useEffect } from 'react';
 import { getStats, getFeed } from '../lib/raverBridge';
 import { safeGetJSON, safeSetJSON } from '../lib/safeStorage';
+import { DEFAULT_PRODUCTS } from '../lib/seedData';
 
 const PRODUCTS_KEY = 'raver_products_v1';
-
-// CATÁLOGO OFICIAL ACTUALIZADO (Estructura unificada con Tienda Online y POS)
-const INITIAL_PRODUCTS = [
-  // Mascarillas
-  { id: 101, SKU: 'RS-MSK-CYB-V1', nombre: 'Mascarilla Cyber V1', categoria: 'Mascarillas', precio: 19990, stock_actual: 10, color: 'Negro + Naranja', talla: 'Ajustable', icon: '🥽', imagen: '/vestuario/Mascarilla Cyber V1.png' },
-  { id: 102, SKU: 'RS-MSK-CYB-V2', nombre: 'Mascarilla Cyber V2', categoria: 'Mascarillas', precio: 18990, stock_actual: 8, color: 'Negro + Blanco', talla: 'Ajustable', icon: '🥽', imagen: '/vestuario/Mascarilla Cyber V2.png' },
-  { id: 103, SKU: 'RS-MSK-CYB-V3', nombre: 'Mascarilla Cyber V3', categoria: 'Mascarillas', precio: 21990, stock_actual: 6, color: 'Negro Mate', talla: 'Ajustable', icon: '🥽', imagen: '/vestuario/Mascarilla Cyber V3.png' },
-  { id: 104, SKU: 'RS-MSK-CYB-V4', nombre: 'Mascarilla Cyber V4', categoria: 'Mascarillas', precio: 16990, stock_actual: 12, color: 'Negro + Gris', talla: 'Ajustable', icon: '🥽', imagen: '/vestuario/Mascarilla Cyber V4.png' },
-  { id: 105, SKU: 'RS-MSK-CYB-V5', nombre: 'Mascarilla Cyber V5 Visor', categoria: 'Mascarillas', precio: 23990, stock_actual: 5, color: 'Reflectante', talla: 'Ajustable', icon: '🥽', imagen: '/vestuario/Mascarilla Cyber V5.png' },
-  { id: 106, SKU: 'RS-MSK-TAC-PRO', nombre: 'Mascarilla Tactic Pro', categoria: 'Mascarillas', precio: 17990, stock_actual: 9, color: 'Negro Táctico', talla: 'Ajustable', icon: '😷', imagen: '/vestuario/Mascarilla Tactic Pro.png' },
-  { id: 107, SKU: 'RS-MSK-TAC-CAMO', nombre: 'Mascarilla Tactic Camo', categoria: 'Mascarillas', precio: 16990, stock_actual: 7, color: 'Camo Negro', talla: 'Ajustable', icon: '😷', imagen: '/vestuario/Mascarilla Tactic Camo.png' },
-  { id: 108, SKU: 'RS-MSK-LED-NEON', nombre: 'Mascarilla LED Neon', categoria: 'Mascarillas', precio: 22990, stock_actual: 11, color: 'Azul Neon', talla: 'Ajustable', icon: '⚡', imagen: '/vestuario/Mascarilla LED Neon.png' },
-  { id: 109, SKU: 'RS-MSK-LED-PULSE', nombre: 'Mascarilla LED Pulse', categoria: 'Mascarillas', precio: 22990, stock_actual: 8, color: 'Morado Glow', talla: 'Ajustable', icon: '⚡', imagen: '/vestuario/Mascarilla LED Pulse.png' },
-  { id: 110, SKU: 'RS-MSK-SAM-KAI', nombre: 'Mascarilla Samurai Kai', categoria: 'Mascarillas', precio: 24990, stock_actual: 6, color: 'Negro', talla: 'Ajustable', icon: '👺', imagen: '/vestuario/Mascarilla Samurai Kai.png' },
-  { id: 111, SKU: 'RS-MSK-SAM-DRK', nombre: 'Mascarilla Samurai Dark', categoria: 'Mascarillas', precio: 26990, stock_actual: 4, color: 'Negro Mate', talla: 'Ajustable', icon: '👺', imagen: '/vestuario/Mascarilla Samurai Dark.png' },
-  { id: 112, SKU: 'RS-MSK-SAM-BLD', nombre: 'Mascarilla Samurai Blood', categoria: 'Mascarillas', precio: 26990, stock_actual: 5, color: 'Negro + Rojo', talla: 'Ajustable', icon: '👺', imagen: '/vestuario/Mascarilla Samurai Blood.png' },
-
-  // Poleras
-  { id: 201, SKU: 'RS-TEE-MEN-01', nombre: 'Raver Tech Tee (Hombre)', categoria: 'Poleras', precio: 22990, stock_actual: 15, color: 'Negro + Naranja', talla: 'L', icon: '👕', imagen: '/vestuario/Raver Tech Tee Hombre.png' },
-  { id: 202, SKU: 'RS-TEE-WM-01', nombre: 'Raver Fit Tee (Mujer)', categoria: 'Poleras', precio: 19990, stock_actual: 12, color: 'Negro Mate + Glow', talla: 'M', icon: '👕', imagen: '/vestuario/Raver Tech Tee Mujer.png' },
-
-  // Polerones y Cortavientos
-  { id: 301, SKU: 'RS-HD-CYBARMOR', nombre: 'Cyber Armor Hoodie', categoria: 'Polerones', precio: 39990, stock_actual: 7, color: 'Negro + Naranja Glow', talla: 'XL', icon: '🧥', imagen: '/vestuario/Cyber Armor Hoodie Hombre.png' },
-  { id: 302, SKU: 'RS-HD-NEONPULSE', nombre: 'Neon Pulse Hoodie', categoria: 'Polerones', precio: 38990, stock_actual: 6, color: 'Negro + Morado Glow', talla: 'M', icon: '🧥', imagen: '/vestuario/Cyber Armor Hoodie Mujer.png' },
-  { id: 401, SKU: 'RS-CV-CYBARMOR', nombre: 'Cyber Armor Cortavientos', categoria: 'Cortavientos', precio: 34990, stock_actual: 8, color: 'Negro + Naranja', talla: 'L', icon: '🧥', imagen: '/vestuario/Cyber Armor Cortavientos Hombre.png' },
-  { id: 402, SKU: 'RS-CV-NEONPULSE', nombre: 'Neon Pulse Cortavientos Crop', categoria: 'Cortavientos', precio: 32990, stock_actual: 5, color: 'Negro + Morado', talla: 'S', icon: '🧥', imagen: '/vestuario/Cyber Armor Cortavientos Mujer.png' },
-
-  // Pantalones
-  { id: 501, SKU: 'RS-PNT-TECH-MEN', nombre: 'Tech Cargo Pants', categoria: 'Pantalones', precio: 36990, stock_actual: 9, color: 'Negro Desgastado', talla: '42', icon: '👖', imagen: '/vestuario/Tech Cargo Pants Hombre.png' },
-  { id: 502, SKU: 'RS-PNT-CYB-WM', nombre: 'Cyber Cargo Fit High Waist', categoria: 'Pantalones', precio: 34990, stock_actual: 8, color: 'Negro', talla: '38', icon: '👖', imagen: '/vestuario/Tech Cargo Pants Mujer.png' },
-
-  // Calzado
-  { id: 601, SKU: 'RS-SNK-TECH', nombre: 'Raver Tech Sneakers LED', categoria: 'Zapatillas', precio: 59990, stock_actual: 10, color: 'Negro + Naranja Glow', talla: '41', icon: '👟', imagen: '/vestuario/zapatillas.png' },
-
-  // Lentes de Sol
-  { id: 701, SKU: 'RS-GLS-SPORT-BLK', nombre: 'Cyber Vision Glasses (Sport 180°)', categoria: 'Lentes de Sol', precio: 15990, stock_actual: 20, color: 'Cyber Black', talla: 'Única', icon: '🕶️', imagen: '/vestuario/Cyber Vision Glasses (Sport 180°).png' },
-  { id: 702, SKU: 'RS-GLS-SPORT-PUR', nombre: 'Cyber Vision Glasses Purple 180°', categoria: 'Lentes de Sol', precio: 15990, stock_actual: 15, color: 'Cyber Purple', talla: 'Única', icon: '🕶️', imagen: '/vestuario/Cyber Vision Glasses Purple (Sport 180°).png' },
-  { id: 703, SKU: 'RS-GLS-WAY-BLK', nombre: 'Cyber Vision Glasses (Wayfarer)', categoria: 'Lentes de Sol', precio: 14990, stock_actual: 18, color: 'Cyber Black', talla: 'Única', icon: '🕶️', imagen: '/vestuario/Cyber Vision Glasses (Wayfarer).png' },
-
-  // Accesorios
-  { id: 801, SKU: 'RS-BAG-LEG-ORG', nombre: 'Leg Utility Bag / Musera Tactical', categoria: 'Accesorios', precio: 18990, stock_actual: 14, color: 'Naranja Neón', talla: 'Ajustable', icon: '🎒', imagen: '/vestuario/LegUtilityBag.png' },
-  { id: 802, SKU: 'RS-BAG-BAN-BLK', nombre: 'Banano Raver Style YKK', categoria: 'Accesorios', precio: 12990, stock_actual: 25, color: 'Negro', talla: 'Ajustable', icon: '🎒', imagen: '/vestuario/Banano.png' },
-  { id: 803, SKU: 'RS-ACC-BOTTLE', nombre: 'Porta Botella Táctico Holder', categoria: 'Accesorios', precio: 8990, stock_actual: 30, color: 'Negro + Naranja', talla: 'Ajustable', icon: '🧪', imagen: '/vestuario/Bottle Holder.png' },
-  { id: 804, SKU: 'RS-ACC-GLOVES', nombre: 'Guantes Raver Tech Touchscreen', categoria: 'Accesorios', precio: 11990, stock_actual: 12, color: 'Negro', talla: 'L', icon: '🥊', imagen: '/vestuario/Guantes.png' }
-];
+const INITIAL_PRODUCTS = DEFAULT_PRODUCTS;
 
 export default function RoleDashboard() {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'stock'
