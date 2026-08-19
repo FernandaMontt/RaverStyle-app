@@ -9,7 +9,7 @@ robusta.
 
 ```bash
 npm install
-npm run dev      # desarrollo, http://localhost:5173
+npm run dev      # desarrollo, http://localhost:5173 
 npm run build    # genera /dist listo para producción
 npm run preview  # sirve /dist localmente para probarlo
 ```
@@ -76,4 +76,4 @@ si en algún momento se necesita seguridad de nivel producción.
 Cuando quieras seguir con **Caja POS** o **Tienda Online**, dime cuál y
 seguimos con la misma estructura: componentes por sección/vista, el
 mismo `safeStorage`, y ahí sí entran las mejoras de contraseñas
-(hash), validación de formularios y sanitización de inputs de usuario.
+(hash), validación de formularios y sanitización de inputs de usuario para la seguridad.
