@@ -143,11 +143,11 @@ export default function POSView() {
                 key={prod.id}
                 onClick={() => addToCart(prod.id)}
                 className={
-                  'group cursor-pointer bg-slate-950 border border-slate-800/80 hover:border-cyan-500/50 rounded-xl p-3 flex flex-col justify-between transition duration-200 relative overflow-hidden ' +
+                  'group cursor-pointer bg-slate-950 border border-slate-800/80 hover:border-cyan-500/50 rounded-xl p-3 flex flex-col justify-between transition duration-200 relative ' +
                   (prod.stock_actual === 0 ? 'opacity-50 cursor-not-allowed' : '')
                 }
               >
-                <div className="aspect-square w-full bg-slate-900 rounded-lg overflow-hidden mb-2 relative">
+                <div className="aspect-square w-full bg-slate-900 rounded-lg overflow-hidden mb-2 relative shrink-0">
                   <img
                     src={prod.imagen}
                     alt={prod.nombre}
@@ -158,12 +158,12 @@ export default function POSView() {
                   />
                   <span className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-black/70 text-[10px] font-bold text-cyan-400 border border-cyan-500/30">{prod.talla}</span>
                 </div>
-                <div>
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{prod.categoria}</span>
-                  <h4 className="text-xs font-bold text-white line-clamp-1 group-hover:text-cyan-400 transition">{prod.nombre}</h4>
+                <div className="shrink-0 leading-tight space-y-0.5">
+                  <span className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{prod.categoria}</span>
+                  <h4 className="text-xs font-bold text-white truncate group-hover:text-cyan-400 transition">{prod.nombre}</h4>
                   <p className="text-[10px] text-slate-400 font-mono">SKU: {prod.SKU}</p>
                 </div>
-                <div className="mt-2 flex items-center justify-between border-t border-slate-800/60 pt-2">
+                <div className="mt-2 flex items-center justify-between border-t border-slate-800/60 pt-2 shrink-0">
                   <span className="text-xs font-extrabold text-cyan-400 font-mono">{formatCLP(prod.precio)}</span>
                   <span className={'text-[10px] font-medium ' + (prod.stock_actual <= prod.stock_minimo ? 'text-amber-400 font-bold' : 'text-slate-400')}>Stock: {prod.stock_actual}</span>
                 </div>
@@ -197,7 +197,7 @@ export default function POSView() {
               <div key={idx} className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
                 <div className="flex justify-between items-start gap-2">
                   <div>
-                    <p className="text-xs font-bold text-white line-clamp-1">{item.nombre}</p>
+                    <p className="text-xs font-bold text-white truncate">{item.nombre}</p>
                     <p className="text-[10px] text-slate-400 font-mono">
                       {item.talla} • {formatCLP(item.precio)} c/u
                     </p>

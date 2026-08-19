@@ -22,6 +22,17 @@ async function buildSeedUsers() {
   return withHash;
 }
 
+function normalizeProducts(savedProducts) {
+  return savedProducts.map((p) => {
+    const match = DEFAULT_PRODUCTS.find((dp) => dp.id === p.id || dp.SKU === p.SKU);
+    return {
+      ...p,
+      icon: p.icon || match?.icon || '👕',
+      nombre: p.nombre || match?.nombre || 'Producto',
+    };
+  });
+}
+
 function actorLabelOf(user) {
   return user ? `${user.nombre} (${user.rol})` : 'Sistema';
 }
@@ -33,39 +44,37 @@ export function StoreProvider({ children }) {
   const inactivityTimer = useRef(null);
   const stateRef = useRef(state);
   stateRef.current = state;
+  const skipNextProductsEvent = useRef(false);
 
-  // ─── Hidratación inicial ───
+  // ─── Hidratación inicial y Sincronización en tiempo real ───
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // 1. Usuarios
-      const savedUsers = safeGetJSON(DB_KEYS.USERS, null);
-      const users = (Array.isArray(savedUsers) && savedUsers.length > 0)
-        ? savedUsers
-        : (await buildSeedUsers());
+      const loadData = () => {
+        const savedUsers = safeGetJSON(DB_KEYS.USERS, null);
+        const users = (Array.isArray(savedUsers) && savedUsers.length > 0)
+          ? savedUsers
+          : null;
 
-      // 2. Productos (Asegura icono en productos existentes en localStorage)
-      const savedProducts = safeGetJSON(DB_KEYS.PRODUCTS, null);
-      const products = (Array.isArray(savedProducts) && savedProducts.length > 0)
-        ? savedProducts.map((p) => {
-            if (!p.icon) {
-              const match = DEFAULT_PRODUCTS.find((dp) => dp.id === p.id || dp.SKU === p.SKU);
-              return { ...p, icon: match?.icon || '👕' };
-            }
-            return p;
-          })
-        : DEFAULT_PRODUCTS;
+        const savedProducts = safeGetJSON(DB_KEYS.PRODUCTS, null);
+        const products = (Array.isArray(savedProducts) && savedProducts.length > 0)
+          ? normalizeProducts(savedProducts)
+          : DEFAULT_PRODUCTS;
 
-      // 3. Historial y colecciones generales
-      const sales = safeGetJSON(DB_KEYS.SALES, []);
-      const saleDetails = safeGetJSON(DB_KEYS.SALE_DETAILS, []);
-      const shifts = safeGetJSON(DB_KEYS.SHIFTS, []);
-      const movements = safeGetJSON(DB_KEYS.MOVEMENTS, []);
-      const refunds = safeGetJSON(DB_KEYS.REFUNDS, []);
-      const settings = safeGetJSON(DB_KEYS.SETTINGS, null) || DEFAULT_SETTINGS;
-      const logs = safeGetJSON(DB_KEYS.LOGS, []);
+        const sales = safeGetJSON(DB_KEYS.SALES, []);
+        const saleDetails = safeGetJSON(DB_KEYS.SALE_DETAILS, []);
+        const shifts = safeGetJSON(DB_KEYS.SHIFTS, []);
+        const movements = safeGetJSON(DB_KEYS.MOVEMENTS, []);
+        const refunds = safeGetJSON(DB_KEYS.REFUNDS, []);
+        const settings = safeGetJSON(DB_KEYS.SETTINGS, null) || DEFAULT_SETTINGS;
+        const logs = safeGetJSON(DB_KEYS.LOGS, []);
 
-      // 4. Estado de sesión activa y carrito
+        return { users, products, sales, saleDetails, shifts, movements, refunds, settings, logs };
+      };
+
+      const initialData = loadData();
+      const users = initialData.users || (await buildSeedUsers());
+
       const currentUserId = safeGetJSON(SESSION_KEYS.CURRENT_USER_ID, null);
       const currentShiftId = safeGetJSON(SESSION_KEYS.CURRENT_SHIFT_ID, null);
       const cart = safeGetJSON(SESSION_KEYS.CART, []);
@@ -76,14 +85,14 @@ export function StoreProvider({ children }) {
         type: 'HYDRATE',
         payload: {
           users,
-          products,
-          sales,
-          saleDetails,
-          shifts,
-          movements,
-          refunds,
-          settings,
-          logs,
+          products: initialData.products,
+          sales: initialData.sales,
+          saleDetails: initialData.saleDetails,
+          shifts: initialData.shifts,
+          movements: initialData.movements,
+          refunds: initialData.refunds,
+          settings: initialData.settings,
+          logs: initialData.logs,
           currentUserId,
           currentShiftId,
           cart,
@@ -92,8 +101,36 @@ export function StoreProvider({ children }) {
       hydrated.current = true;
     })();
 
+    const handleExternalUpdate = () => {
+      if (!hydrated.current) return;
+      // Ignora el evento si fue disparado por esta misma pestaña al persistir sus
+      // propios cambios (ver efecto de persistencia de `state.products` más abajo).
+      // Si no filtramos esto, cada actualización de productos vuelve a dispatchear
+      // este mismo evento y se genera un loop infinito de renders.
+      if (skipNextProductsEvent.current) {
+        skipNextProductsEvent.current = false;
+        return;
+      }
+      const savedProducts = safeGetJSON(DB_KEYS.PRODUCTS, null);
+      if (Array.isArray(savedProducts)) {
+        const normalizedProducts = normalizeProducts(savedProducts);
+        dispatch({
+          type: 'HYDRATE',
+          payload: {
+            ...stateRef.current,
+            products: normalizedProducts,
+          },
+        });
+      }
+    };
+
+    window.addEventListener('storage', handleExternalUpdate);
+    window.addEventListener('raver_products_updated', handleExternalUpdate);
+
     return () => {
       cancelled = true;
+      window.removeEventListener('storage', handleExternalUpdate);
+      window.removeEventListener('raver_products_updated', handleExternalUpdate);
     };
   }, []);
 
@@ -102,7 +139,11 @@ export function StoreProvider({ children }) {
     if (hydrated.current) safeSetJSON(DB_KEYS.USERS, state.users);
   }, [state.users]);
   useEffect(() => {
-    if (hydrated.current) safeSetJSON(DB_KEYS.PRODUCTS, state.products);
+    if (hydrated.current) {
+      safeSetJSON(DB_KEYS.PRODUCTS, state.products);
+      skipNextProductsEvent.current = true;
+      window.dispatchEvent(new Event('raver_products_updated'));
+    }
   }, [state.products]);
   useEffect(() => {
     if (hydrated.current) safeSetJSON(DB_KEYS.SALES, state.sales);
@@ -236,14 +277,14 @@ export function StoreProvider({ children }) {
     }
     dispatch({
       type: 'ADD_TO_CART',
-      item: { 
-        id: prod.id, 
-        SKU: prod.SKU, 
-        nombre: prod.nombre, 
-        talla: prod.talla, 
-        precio: prod.precio, 
-        cantidad: 1, 
-        descuento: 0, 
+      item: {
+        id: prod.id,
+        SKU: prod.SKU,
+        nombre: prod.nombre,
+        talla: prod.talla,
+        precio: prod.precio,
+        cantidad: 1,
+        descuento: 0,
         stock_actual: prod.stock_actual,
         icon: prod.icon || '👕',
         imagen: prod.imagen || ''
